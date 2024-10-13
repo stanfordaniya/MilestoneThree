@@ -162,6 +162,9 @@
             <div id="signin-button" class="g-signin2" data-onsuccess="onSignIn"></div>
         </div>
 
+        <!-- User Info after Sign-In -->
+        <div id="user-info"></div>
+
         <!-- Book List -->
         <div class="book-list" id="bookList"></div>
 
@@ -178,19 +181,17 @@
         </div>
     </div>
 
-    <!-- jQuery -->
+    <!-- jQuery and Google Sign-In Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-    <!-- Google Sign-In -->
     <script src="https://apis.google.com/js/platform.js" async defer></script>
     <meta name="google-signin-client_id" content="873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com">
-    
-    <script>
-        let currentPage = 1;
-        const booksPerPage = 10;
-        const totalAllowedResults = 50;
 
+    <script>
         $(document).ready(function () {
+            let currentPage = 1;
+            const booksPerPage = 10;
+            const totalAllowedResults = 50;
+
             // Search button click event with validation
             $('#searchButton').click(function () {
                 let searchTerm = $('#searchInput').val().trim();
@@ -200,11 +201,6 @@
                 }
                 currentPage = 1;
                 searchBooks(searchTerm, currentPage);
-            });
-
-            // Google Login button shows sign-in option
-            $('#googleLoginButton').click(function () {
-                $('#signin-button').show();
             });
 
             // Function to search books using Google Books API with pagination
@@ -292,7 +288,21 @@
             function onSignIn(googleUser) {
                 var profile = googleUser.getBasicProfile();
                 var accessToken = googleUser.getAuthResponse().access_token;
-                
+
+                console.log('ID: ' + profile.getId());
+                console.log('Name: ' + profile.getName());
+                console.log('Image URL: ' + profile.getImageUrl());
+                console.log('Email: ' + profile.getEmail());
+
+                // Display user info on the page
+                document.getElementById('user-info').innerHTML = `
+                    <h3>Welcome, ${profile.getName()}</h3>
+                    <p>Email: ${profile.getEmail()}</p>
+                    <img src="${profile.getImageUrl()}" alt="Profile Picture" />
+                    <button onclick="signOut()">Sign out</button>
+                `;
+
+                // Fetch dynamic bookshelf with accessToken
                 $.ajax({
                     url: `https://www.googleapis.com/books/v1/mylibrary/bookshelves?key=AIzaSyC7LacympO_n-WrND9RVNj88UXOmmpZUq8`,
                     method: 'GET',
@@ -306,6 +316,14 @@
                             bookshelfList.append(`<div class="book-item">${bookshelf.title}</div>`);
                         });
                     }
+                });
+            }
+
+            function signOut() {
+                var auth2 = gapi.auth2.getAuthInstance();
+                auth2.signOut().then(function () {
+                    console.log('User signed out.');
+                    document.getElementById('user-info').innerHTML = '<p>You have signed out.</p>';
                 });
             }
         });
