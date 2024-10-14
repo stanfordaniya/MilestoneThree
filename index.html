@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Milestone 3: Book Search with AJAX</title>
+    <title>Milestone 3: Book Search with Google Identity Services</title>
     <style>
         /* Main Styles */
         body {
@@ -157,10 +157,13 @@
             <button id="searchButton">Search</button>
         </div>
 
-        <!-- Google Login Button -->
-        <div class="google-login">
-            <div id="signin-button" class="g-signin2" data-onsuccess="onSignIn"></div>
+        <!-- New Google Sign-In Button -->
+        <div id="g_id_onload"
+            data-client_id="YOUR_GOOGLE_CLIENT_ID"
+            data-callback="handleCredentialResponse"
+            data-auto_prompt="false">
         </div>
+        <div class="g_id_signin" data-type="standard"></div>
 
         <!-- User Info after Sign-In -->
         <div id="user-info"></div>
@@ -181,10 +184,9 @@
         </div>
     </div>
 
-    <!-- jQuery and Google Sign-In Scripts -->
+    <!-- Include Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://apis.google.com/js/platform.js" async defer></script>
-    <meta name="google-signin-client_id" content="873205161879-mafc144b5163303ev0jcuei9qjehu2rh.apps.googleusercontent.com">
 
     <script>
         $(document).ready(function () {
@@ -284,47 +286,37 @@
                 });
             }
 
-            // Google Sign-In to fetch dynamic bookshelf
-            function onSignIn(googleUser) {
-                var profile = googleUser.getBasicProfile();
-                var accessToken = googleUser.getAuthResponse().access_token;
-
-                console.log('ID: ' + profile.getId());
-                console.log('Name: ' + profile.getName());
-                console.log('Image URL: ' + profile.getImageUrl());
-                console.log('Email: ' + profile.getEmail());
+            // Handle the sign-in response
+            function handleCredentialResponse(response) {
+                const responsePayload = parseJwt(response.credential);
+                console.log('ID: ' + responsePayload.sub);
+                console.log('Full Name: ' + responsePayload.name);
+                console.log('Email: ' + responsePayload.email);
 
                 // Display user info on the page
                 document.getElementById('user-info').innerHTML = `
-                    <h3>Welcome, ${profile.getName()}</h3>
-                    <p>Email: ${profile.getEmail()}</p>
-                    <img src="${profile.getImageUrl()}" alt="Profile Picture" />
+                    <h3>Welcome, ${responsePayload.name}</h3>
+                    <p>Email: ${responsePayload.email}</p>
+                    <img src="${responsePayload.picture}" alt="Profile Picture" />
                     <button onclick="signOut()">Sign out</button>
                 `;
-
-                // Fetch dynamic bookshelf with accessToken
-                $.ajax({
-                    url: `https://www.googleapis.com/books/v1/mylibrary/bookshelves?key=AIzaSyC7LacympO_n-WrND9RVNj88UXOmmpZUq8`,
-                    method: 'GET',
-                    headers: {
-                        'Authorization': 'Bearer ' + accessToken
-                    },
-                    success: function (data) {
-                        let bookshelfList = $('#bookshelfList');
-                        bookshelfList.empty();
-                        data.items.forEach(bookshelf => {
-                            bookshelfList.append(`<div class="book-item">${bookshelf.title}</div>`);
-                        });
-                    }
-                });
             }
 
+            // Helper function to parse JWT token
+            function parseJwt(token) {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+
+                return JSON.parse(jsonPayload);
+            }
+
+            // Sign out function
             function signOut() {
-                var auth2 = gapi.auth2.getAuthInstance();
-                auth2.signOut().then(function () {
-                    console.log('User signed out.');
-                    document.getElementById('user-info').innerHTML = '<p>You have signed out.</p>';
-                });
+                document.getElementById('user-info').innerHTML = '<p>You have signed out.</p>';
+                console.log('User signed out.');
             }
         });
     </script>
